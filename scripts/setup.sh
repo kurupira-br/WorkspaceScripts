@@ -150,6 +150,7 @@ main() {
     echo "export ${VAR_WORKTREE}=$(printf '%q' "$wt_path")"
   } >"$tmp"
   mv -f "$tmp" "$OUT_FILE"
+  chmod 600 "$OUT_FILE" 2>/dev/null || true
 
   if [[ ${WS_UI_MODE:-} == dialog ]]; then
     local srcq

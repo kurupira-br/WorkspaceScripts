@@ -352,7 +352,7 @@ Choose an action (Cancel = main menu)" 20 80 2 \
     case $_next in
       menu) exit 0 ;;
       go)
-        if ! printf '%s\n' "$goto_path" >"$TOOLKIT_ROOT/config/.ws-ui-cd-next" 2>/dev/null; then
+        if ! printf '%s\n' "$goto_path" >"${WS_UI_CD_NEXT_FILE:-$TOOLKIT_ROOT/config/.ws-ui-cd-next}" 2>/dev/null; then
           dialog --title "create-worktree.sh" --msgbox "Could not write the path. Change directory yourself:
 
 $goto_path" 18 80 2>/dev/tty

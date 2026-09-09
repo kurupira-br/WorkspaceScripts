@@ -1,15 +1,42 @@
 # Shared Salesforce package helpers (sourced by create-worktree.sh, select-project.sh).
 
+# Default packages when WS_SF_PACKAGES is not set in config/env.local.sh.
+readonly _WS_SF_DEFAULT_PACKAGES=(Recruitment BusinessCentral Workforce Maia)
+
+# Prints one package name per line: WS_SF_PACKAGES (space-separated, from env.local.sh)
+# if set, otherwise the built-in default list.
+sf_package_list() {
+  if [[ -n ${WS_SF_PACKAGES:-} ]]; then
+    # shellcheck disable=SC2206 # intentional word-splitting of a space-separated config var
+    local -a pkgs=($WS_SF_PACKAGES)
+    printf '%s\n' "${pkgs[@]}"
+  else
+    printf '%s\n' "${_WS_SF_DEFAULT_PACKAGES[@]}"
+  fi
+}
+
 prompt_sf_package() {
   local choice
+  local -a pkgs=()
+  local p
+  while IFS= read -r p; do
+    [[ -n $p ]] && pkgs+=("$p")
+  done < <(sf_package_list)
+
+  if ((${#pkgs[@]} == 0)); then
+    echo "No Salesforce packages configured (WS_SF_PACKAGES)." >&2
+    return 1
+  fi
+
   if [[ ${WS_UI_MODE:-} == dialog ]]; then
+    local menu=()
+    for p in "${pkgs[@]}"; do
+      menu+=("$p" "$p")
+    done
     if ! choice=$(
       dialog --stdout --title "Salesforce package" \
-        --menu "Select package (Cancel to go back):" 16 50 4 \
-        Recruitment "Recruitment" \
-        BusinessCentral "Business Central" \
-        Workforce "Workforce" \
-        Maia "Maia" \
+        --menu "Select package (Cancel to go back):" $((10 + ${#pkgs[@]})) 50 "${#pkgs[@]}" \
+        "${menu[@]}" \
         2>/dev/tty
     ); then
       return 1
@@ -19,23 +46,29 @@ prompt_sf_package() {
   fi
   while true; do
     echo "Select Salesforce package:" >&2
-    echo "  1) Recruitment" >&2
-    echo "  2) BusinessCentral" >&2
-    echo "  3) Workforce" >&2
-    echo "  4) Maia" >&2
-    read -r -p "Choice [1-4]: " choice || true
-    case $choice in
-      1) echo Recruitment; return 0 ;;
-      2) echo BusinessCentral; return 0 ;;
-      3) echo Workforce; return 0 ;;
-      4) echo Maia; return 0 ;;
-      *) echo "Invalid choice; enter 1, 2, 3, or 4." >&2 ;;
-    esac
+    local i=1
+    for p in "${pkgs[@]}"; do
+      printf '  %d) %s\n' "$i" "$p" >&2
+      ((i++))
+    done
+    read -r -p "Choice [1-${#pkgs[@]}]: " choice || true
+    if [[ $choice =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= ${#pkgs[@]})); then
+      printf '%s\n' "${pkgs[$((choice - 1))]}"
+      return 0
+    fi
+    echo "Invalid choice; enter 1-${#pkgs[@]}." >&2
   done
 }
 
-# True if the configured main repo is treated as the Salesforce repo (basename contains "Salesforce").
+# True if the repo should be treated as a Salesforce repo (package prompts/marker files).
+# Prefers the explicit WS_SF_MODE override; falls back to a basename("Salesforce") heuristic.
 is_salesforce_repo() {
+  if [[ -n ${WS_SF_MODE:-} ]]; then
+    case ${WS_SF_MODE,,} in
+      1 | true | yes | on) return 0 ;;
+      0 | false | no | off) return 1 ;;
+    esac
+  fi
   local base
   base=$(basename "$WS_GIT_REPO_ROOT")
   [[ $base == *Salesforce* ]]

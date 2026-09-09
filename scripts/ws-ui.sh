@@ -33,11 +33,13 @@ run_subscript() {
   local path=$1
   local name st cdfile p
   name=$(basename "$path")
-  WS_FROM_WS_UI=1 WS_UI_MODE=dialog bash "$path"
+  # Unique handoff file per invocation so concurrent `ws` sessions don't race on the same path.
+  cdfile=$(mktemp "$TOOLKIT_ROOT/config/.ws-ui-cd-next.XXXXXX" 2>/dev/null) || cdfile="$TOOLKIT_ROOT/config/.ws-ui-cd-next"
+  rm -f "$cdfile" 2>/dev/null || true # mktemp pre-creates it empty; child (re)writes it only on exit 10
+  WS_FROM_WS_UI=1 WS_UI_MODE=dialog WS_UI_CD_NEXT_FILE="$cdfile" bash "$path"
   st=$?
-  # select-project & create-worktree: exit 10 = cd to project path in .ws-ui-cd-next, then login shell
+  # select-project & create-worktree: exit 10 = cd to project path in $cdfile, then login shell
   if ((st == 10)) && { [[ $name == select-project.sh ]] || [[ $name == create-worktree.sh ]]; }; then
-    cdfile="$TOOLKIT_ROOT/config/.ws-ui-cd-next"
     p=$(tr -d '\r' <"$cdfile" 2>/dev/null | head -n 1) || p=
     rm -f "$cdfile" 2>/dev/null || true
     if [[ -n $p && -d $p ]]; then
@@ -55,6 +57,7 @@ run_subscript() {
     fi
     return
   fi
+  rm -f "$cdfile" 2>/dev/null || true
   if ((st != 0)); then
     dialog --title "$name" --msgbox "Error (exit $st). Press OK to return to the menu." 10 60 2>/dev/tty
   fi

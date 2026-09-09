@@ -12,6 +12,8 @@ if [[ ! -f $ENV_FILE ]]; then
 fi
 # shellcheck source=/dev/null
 source "$ENV_FILE"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/worktree-list.sh"
 
 : "${WS_GIT_REPO_ROOT:?Set WS_GIT_REPO_ROOT in config/env.local.sh}"
 : "${WS_GIT_WORKTREE_PATH:?Set WS_GIT_WORKTREE_PATH in config/env.local.sh}"
@@ -26,71 +28,59 @@ if [[ ! -t 0 ]] || [[ ! -t 1 ]]; then
   exit 1
 fi
 
-# Globals used while parsing porcelain
+# Globals used by load_sorted_arrays / main
 WT_BASE=
 REPO_ROOT=
-path=
-bname=
-
-flush_worktree_block() {
-  [[ -z ${path:-} ]] && return
-  local rp
-  if ! rp=$(cd "$path" 2>/dev/null && pwd); then
-    path=
-    bname=
-    return
-  fi
-  case "$rp" in
-    "$WT_BASE" | "$WT_BASE"/*) ;;
-    *)
-      path=
-      bname=
-      return
-      ;;
-  esac
-  if [[ $rp == "$REPO_ROOT" ]]; then
-    path=
-    bname=
-    return
-  fi
-  printf '%s\t%s\n' "$rp" "${bname:-}"
-  path=
-  bname=
-}
-
-collect_removable() {
-  WT_BASE=$(cd "$WS_GIT_WORKTREE_PATH" && pwd)
-  REPO_ROOT=$(cd "$WS_GIT_REPO_ROOT" && pwd)
-  path=
-  bname=
-  local line
-  while IFS= read -r line || [[ -n $line ]]; do
-    if [[ $line == worktree\ * ]]; then
-      flush_worktree_block
-      path=${line#worktree }
-    elif [[ $line == branch\ refs/heads/* ]]; then
-      bname=${line#branch refs/heads/}
-    elif [[ $line == branch\ * ]]; then
-      bname="__detached__"
-    elif [[ $line == detached ]]; then
-      bname="__detached__"
-    fi
-  done < <(git -C "$REPO_ROOT" worktree list --porcelain)
-  flush_worktree_block
-}
 
 load_sorted_arrays() {
   paths_sorted=()
   branches_sorted=()
-  local line tab p b
-  tab=$'\t'
+  local line
   while IFS= read -r line; do
     [[ -z $line ]] && continue
-    p=${line%%"$tab"*}
-    b=${line#*"$tab"}
-    paths_sorted+=("$p")
-    branches_sorted+=("$b")
-  done < <(collect_removable | sort -u)
+    paths_sorted+=("${line%%$'\t'*}")
+    branches_sorted+=("${line#*$'\t'}")
+  done < <(wt_list_raw "$REPO_ROOT" "$WT_BASE" 1 | sort -u)
+}
+
+# First path segment under WT_BASE for a worktree path, e.g. WT_BASE/ITEM1234/Salesforce ->
+# WT_BASE/ITEM1234 (Salesforce repos nest the worktree one level down). Falls back to the
+# path itself when it is not (or is no longer, after removal) inside WT_BASE.
+worktree_project_root() {
+  local rp=$1 rel
+  case "$rp" in
+    "$WT_BASE"/*)
+      rel=${rp#"$WT_BASE"/}
+      printf '%s/%s\n' "$WT_BASE" "${rel%%/*}"
+      ;;
+    *)
+      printf '%s\n' "$rp"
+      ;;
+  esac
+}
+
+# After `git worktree remove` succeeds, delete the leftover project folder (e.g. ./ITEM1234),
+# including any Salesforce-package marker file / parent folder that git worktree remove does
+# not clean up on its own. Refuses to touch anything that is not (still) under WT_BASE, or
+# that Git still lists as a worktree (removal failed / was skipped).
+cleanup_leftover_project_dir() {
+  local wt_path=$1 proj_root
+  proj_root=$(worktree_project_root "$wt_path")
+
+  case "$proj_root" in
+    "$WT_BASE") return 0 ;; # never delete the worktree base directory itself
+    "$WT_BASE"/*) ;;
+    *) return 0 ;;
+  esac
+
+  if git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | grep -Fxq "$wt_path"; then
+    echo "Skipping directory cleanup — Git still lists this worktree: $wt_path" >&2
+    return 1
+  fi
+
+  [[ -d $proj_root ]] || return 0
+  echo "Removing leftover project directory: $proj_root" >&2
+  rm -rf -- "$proj_root"
 }
 
 branch_label() {
@@ -145,12 +135,14 @@ pick_select() {
 }
 
 confirm_remove() {
-  local wt=$1 b=$2 msg
+  local wt=$1 b=$2 proj_root msg
   wt=${wt//\\/\\\\}
+  proj_root=$(worktree_project_root "$1")
+  proj_root=${proj_root//\\/\\\\}
   if [[ -z $b || $b == __detached__ ]]; then
-    msg=$(printf 'Remove this worktree only (no branch to delete)?\n\n%s' "$wt")
+    msg=$(printf 'Remove this worktree (no branch to delete) and delete its folder?\n\nWorktree: %s\nFolder to delete: %s' "$wt" "$proj_root")
   else
-    msg=$(printf 'Remove worktree and delete local branch?\n\nPath: %s\nBranch: %s' "$wt" "$b")
+    msg=$(printf 'Remove worktree, delete local branch, and delete its folder?\n\nWorktree: %s\nBranch: %s\nFolder to delete: %s' "$wt" "$b" "$proj_root")
   fi
   dialog --title "Confirm removal" --yesno "$msg" 16 80 2>/dev/tty
 }
@@ -159,6 +151,7 @@ confirm_remove_tty() {
   local p=$1 b=$2 yn
   echo "Path: $p" >&2
   echo "Branch: $(branch_label "$b")" >&2
+  echo "Folder to delete: $(worktree_project_root "$p")" >&2
   read -r -p "Type YES to remove: " yn </dev/tty || return 1
   [[ $yn == YES ]]
 }
@@ -183,6 +176,8 @@ remove_worktree_and_branch() {
       fi
     fi
   fi
+
+  cleanup_leftover_project_dir "$wt_path" || true
 }
 
 # Stream git output through dialog --progressbox, then optional force-delete prompt + second progress view.
@@ -234,6 +229,12 @@ remove_with_monitor_ui() {
     fi
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Folder cleanup"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    cleanup_leftover_project_dir "$wt_path"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  End of log — press Enter / OK to close this monitor"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   ) 2>&1 | dialog --title "Project removal — monitor" --progressbox "Streaming git output…" 32 100 || true
@@ -260,6 +261,7 @@ remove_with_monitor_ui() {
 
 main() {
   REPO_ROOT=$(cd "$WS_GIT_REPO_ROOT" && pwd)
+  WT_BASE=$(cd "$WS_GIT_WORKTREE_PATH" && pwd)
   load_sorted_arrays
   if ((${#paths_sorted[@]} == 0)); then
     if command -v dialog >/dev/null 2>&1; then

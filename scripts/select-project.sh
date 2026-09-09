@@ -14,6 +14,8 @@ fi
 source "$ENV_FILE"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/sf-package.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/worktree-list.sh"
 
 : "${WS_GIT_REPO_ROOT:?Set WS_GIT_REPO_ROOT in config/env.local.sh}"
 : "${WS_GIT_WORKTREE_PATH:?Set WS_GIT_WORKTREE_PATH in config/env.local.sh}"
@@ -66,62 +68,19 @@ worktree_display_label() {
 }
 
 collect_projects() {
-  local wt_base repo line path bname tab combined
+  local wt_base repo line
   wt_base=$(cd "$WS_GIT_WORKTREE_PATH" && pwd)
   repo=$(cd "$WS_GIT_REPO_ROOT" && pwd)
-  paths=()
-  branches=()
-  path=
-  bname=
 
-  flush_worktree_block() {
-    [[ -z ${path:-} ]] && return
-    local rrp
-    if ! rrp=$(cd "$path" 2>/dev/null && pwd); then
-      path=
-      bname=
-      return
-    fi
-    case "$rrp" in
-      "$wt_base" | "$wt_base"/*)
-        paths+=("$rrp")
-        branches+=("${bname:-}")
-        ;;
-    esac
-    path=
-    bname=
-  }
-
-  while IFS= read -r line || [[ -n $line ]]; do
-    if [[ $line == worktree\ * ]]; then
-      flush_worktree_block
-      path=${line#worktree }
-    elif [[ $line == branch\ refs/heads/* ]]; then
-      bname=${line#branch refs/heads/}
-    elif [[ $line == branch\ * ]]; then
-      bname=__detached__
-    elif [[ $line == detached ]]; then
-      bname=__detached__
-    fi
-  done < <(git -C "$repo" worktree list --porcelain)
-  flush_worktree_block
-
-  if ((${#paths[@]} == 0)); then
-    return 1
-  fi
-
-  tab=$'\t'
-  combined=()
-  for i in "${!paths[@]}"; do
-    combined+=("${paths[$i]}$tab${branches[$i]}")
-  done
   paths_sorted=()
   branches_sorted=()
   while IFS= read -r line; do
     [[ -z $line ]] && continue
-    paths_sorted+=("${line%%"$tab"*}")
-    branches_sorted+=("${line#*"$tab"}")
-  done < <(printf '%s\n' "${combined[@]}" | sort -u -t "$tab" -k1,1)
+    paths_sorted+=("${line%%$'\t'*}")
+    branches_sorted+=("${line#*$'\t'}")
+  done < <(wt_list_raw "$repo" "$wt_base" 0 | sort -u -t $'\t' -k1,1)
+
+  ((${#paths_sorted[@]} > 0))
 }
 
 pick_dialog() {
@@ -208,7 +167,7 @@ main() {
   elif [[ ${WS_UI_MODE:-} == dialog ]]; then
     if [[ ${WS_FROM_WS_UI:-} == 1 ]]; then
       mkdir -p "$TOOLKIT_ROOT/config" 2>/dev/null || true
-      if ! printf '%s\n' "$FINAL_PATH" >"$TOOLKIT_ROOT/config/.ws-ui-cd-next" 2>/dev/null; then
+      if ! printf '%s\n' "$FINAL_PATH" >"${WS_UI_CD_NEXT_FILE:-$TOOLKIT_ROOT/config/.ws-ui-cd-next}" 2>/dev/null; then
         dialog --title "select-project.sh" --msgbox "Could not write target path. Check permissions on $TOOLKIT_ROOT/config" 10 70 2>/dev/tty
         exit 1
       fi
