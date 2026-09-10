@@ -41,7 +41,11 @@ branches/tickets side by side without re-cloning or stashing.
 
 ## Core scripts (`scripts/`)
 
-- `setup.sh` — prompts for repo root & worktree path, validates them, writes `env.local.sh`.
+- `setup.sh` — prompts for repo root & worktree path, validates them, writes `env.local.sh`,
+  then automatically runs `scripts/install.sh` (default `~/.local/bin/ws`) so the `ws`
+  command is ready to use right after setup — no separate install step needed. Install
+  failure is reported but non-fatal (setup still succeeds; you can retry with
+  `scripts/install.sh`).
 - `create-worktree.sh` — prompts for project type (`BUG`/`ITEM`/`OTHER`), a numeric ID, and
   a free-text name; sanitizes the name into `Title_Case_With_Underscores`; builds branch
   name `PREFIX+NUM_Name` (e.g. `BUG1234_Work_Item_Test`) and runs
@@ -116,5 +120,7 @@ branches/tickets side by side without re-cloning or stashing.
 - Testing was intentionally left out of this pass (explicit user request).
 - Added `scripts/install.sh` to symlink `ws` onto `PATH` (default `~/.local/bin/ws`),
   with `--bin-dir`, `--name`, `--force`, and `--uninstall` options.
+- `setup.sh` now calls `scripts/install.sh` automatically at the end of its run, so `ws`
+  is installed on `PATH` as part of the normal setup flow (not a separate manual step).
 
 _Keep this file updated as the toolkit evolves._

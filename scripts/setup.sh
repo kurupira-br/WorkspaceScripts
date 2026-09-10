@@ -152,17 +152,24 @@ main() {
   mv -f "$tmp" "$OUT_FILE"
   chmod 600 "$OUT_FILE" 2>/dev/null || true
 
+  local install_out install_st
+  install_out=$("$SCRIPT_DIR/install.sh" 2>&1) && install_st=0 || install_st=$?
+
   if [[ ${WS_UI_MODE:-} == dialog ]]; then
     local srcq
     srcq=$(printf '%q' "$OUT_FILE")
     dialog --title "setup.sh" --msgbox "Wrote $OUT_FILE
 
 In a regular shell, load with:
-  source $srcq" 12 80 2>/dev/tty
+  source $srcq
+
+$install_out" 18 80 2>/dev/tty
   else
     echo "Wrote $OUT_FILE"
     echo "Load in this shell: source $(printf '%q' "$OUT_FILE")"
+    echo "$install_out"
   fi
+  ((install_st == 0)) || echo "Note: 'ws' command install step failed (exit $install_st) — you can retry with scripts/install.sh." >&2
 }
 
 main "$@"

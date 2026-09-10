@@ -105,6 +105,7 @@ if [[ -e $TARGET || -L $TARGET ]]; then
     if [[ $link_dest == "$LAUNCHER" ]]; then
       echo "Already installed: $TARGET -> $LAUNCHER"
       check_path_hint
+      echo "You can run '$CMD_NAME' from any directory to open the WorkspaceScripts menu."
       exit 0
     fi
   fi
@@ -118,4 +119,4 @@ fi
 ln -s "$LAUNCHER" "$TARGET"
 echo "Installed: $TARGET -> $LAUNCHER"
 check_path_hint
-echo "Run '$CMD_NAME' from any directory to open the WorkspaceScripts menu."
+echo "You can now run '$CMD_NAME' from any directory to open the WorkspaceScripts menu."
