@@ -92,7 +92,7 @@ main() {
   local def_repo repo_path wt_path
   def_repo=$(default_repo)
 
-  if ! repo_path=$(read_with_default "Main repository root (absolute path)" "$def_repo"); then
+  if ! repo_path=$(read_with_default "Main repository root (absolute path) + /Salesforce" "$def_repo"); then
     dialog --title "setup.sh" --msgbox "Setup cancelled. OK to return to the menu." 8 50 2>/dev/tty
     exit 0
   fi

@@ -8,6 +8,12 @@ branches/tickets side by side without re-cloning or stashing.
 
 - `./ws` → execs `scripts/ws-ui.sh`, a `dialog`(1)-based TUI menu with actions:
   `setup`, `worktree` (create), `select`, `remove`, `exit`.
+- `scripts/install.sh` — symlinks `./ws` into `~/.local/bin/ws` (or a custom
+  `--bin-dir`/`--name`) so the toolkit can be run as a plain `ws` command from any
+  directory, without `cd`ing into the repo. It's a symlink (not a copy), so toolkit
+  updates apply immediately. Idempotent (safe to re-run), refuses to clobber an unrelated
+  existing file unless `--force`, warns if the target bin dir isn't on `PATH`, and supports
+  `--uninstall` to remove it again.
 - `ws-ui.sh` runs each sub-script with `WS_FROM_WS_UI=1 WS_UI_MODE=dialog`. Sub-scripts
   behave differently depending on `WS_UI_MODE` (dialog boxes vs plain stdout/stdin prompts)
   and on whether they were sourced vs executed vs run from the TUI.
@@ -108,5 +114,7 @@ branches/tickets side by side without re-cloning or stashing.
   `.ws-sf-package` marker would otherwise remain. Guarded so it never runs unless Git
   confirms the worktree is gone, and never targets anything outside `WS_GIT_WORKTREE_PATH`.
 - Testing was intentionally left out of this pass (explicit user request).
+- Added `scripts/install.sh` to symlink `ws` onto `PATH` (default `~/.local/bin/ws`),
+  with `--bin-dir`, `--name`, `--force`, and `--uninstall` options.
 
 _Keep this file updated as the toolkit evolves._
