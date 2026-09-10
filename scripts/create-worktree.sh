@@ -57,7 +57,7 @@ prompt_project_type() {
     if ! choice=$(
       dialog --stdout --title "New worktree" \
         --menu "Select project type (Cancel to go back to the main menu):" 16 64 3 \
-        BUG "BUG" ITEM "ITEM"         OTHER "OTHER" \
+        B "BUG" F "FEATURE"            OTHER "OTHER" \
         2>/dev/tty
     ); then
       return 1
@@ -68,12 +68,12 @@ prompt_project_type() {
   while true; do
     echo "Select project type:" >&2
     echo "  1) BUG" >&2
-    echo "  2) ITEM" >&2
+    echo "  2) FEATURE" >&2
     echo "  3) OTHER" >&2
     read -r -p "Choice [1-3]: " choice || true
     case $choice in
-      1) echo BUG; return 0 ;;
-      2) echo ITEM; return 0 ;;
+      1) echo B; return 0 ;;
+      2) echo F; return 0 ;;
       3) echo OTHER; return 0 ;;
       *) echo "Invalid choice; enter 1, 2, or 3." >&2 ;;
     esac
@@ -218,10 +218,10 @@ main() {
   worktree_parent=$(cd "$WS_GIT_WORKTREE_PATH" && pwd)
   repo_base=$(basename "$WS_GIT_REPO_ROOT")
 
-  # Path: .../WORKTREE_PATH/OTHER1234  or  .../OTHER1234/Salesforce  (Salesforce repos)
+  # Path: .../WORKTREE_PATH/O1234  or  .../O1234/Salesforce  (Salesforce repos)
   prefix="${ptype}${pnum}"
   slug=$prefix
-  # Branch: OTHER1234_Work_Item_Test
+  # Branch: O1234_Work_Item_Test
   branch="${prefix}_${name_suffix}"
   sf_pkg=
   if is_salesforce_repo; then

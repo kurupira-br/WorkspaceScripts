@@ -93,7 +93,7 @@ sf_resolve_package_dir() {
 }
 
 # Full path to .ws-sf-package: parent of the package base (worktree, or WS_SF_PROJECTS_ROOT when
-# set) + /.ws-sf-package — e.g. worktree .../BUG1234/Salesforce -> .../BUG1234/.ws-sf-package
+# set) + /.ws-sf-package — e.g. worktree .../B1234/Salesforce -> .../B1234/.ws-sf-package
 sf_package_marker_path() {
   local worktree_root=$1
   local base

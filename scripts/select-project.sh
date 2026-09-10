@@ -30,7 +30,7 @@ if [[ ! -t 0 ]] || [[ ! -t 1 ]]; then
   exit 1
 fi
 
-# First path segment under WS_GIT_WORKTREE_PATH (create-worktree folder = BUG1234, etc.).
+# First path segment under WS_GIT_WORKTREE_PATH (create-worktree folder = B1234, etc.).
 worktree_path_prefix() {
   local rp wt_base rel
   wt_base=$(cd "$WS_GIT_WORKTREE_PATH" && pwd)
@@ -49,7 +49,7 @@ worktree_path_prefix() {
   esac
 }
 
-# create-worktree.sh uses branch BUG1234_Project_Name; show Project_Name, not the path/folder prefix.
+# create-worktree.sh uses branch B1234_Project_Name; show Project_Name, not the path/folder prefix.
 worktree_display_label() {
   local rp=$1 br=$2 prefix
   prefix=$(worktree_path_prefix "$rp")

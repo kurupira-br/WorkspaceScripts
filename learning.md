@@ -46,9 +46,9 @@ branches/tickets side by side without re-cloning or stashing.
   command is ready to use right after setup — no separate install step needed. Install
   failure is reported but non-fatal (setup still succeeds; you can retry with
   `scripts/install.sh`).
-- `create-worktree.sh` — prompts for project type (`BUG`/`ITEM`/`OTHER`), a numeric ID, and
+- `create-worktree.sh` — prompts for project type (`BUG`/`FEATURE`/`OTHER`), a numeric ID, and
   a free-text name; sanitizes the name into `Title_Case_With_Underscores`; builds branch
-  name `PREFIX+NUM_Name` (e.g. `BUG1234_Work_Item_Test`) and runs
+  name `PREFIX+NUM_Name` (e.g. `B1234_Work_Item_Test`) and runs
   `git worktree add -b "$branch" "$dest"`. Shows a live `dialog --gauge` progress bar while
   git runs in the background. If the configured repo is a "Salesforce repo" (basename
   contains `Salesforce`), it also asks which package (Recruitment/BusinessCentral/
@@ -59,10 +59,10 @@ branches/tickets side by side without re-cloning or stashing.
   Salesforce package subfolder, via the `.ws-sf-package` marker).
 - `remove-project-worktree.sh` — picks a worktree (excludes the main repo), confirms, then
   runs `git worktree remove` (falls back to `--force`) and optionally `git branch -d`/`-D`.
-  Afterwards it also deletes the leftover top-level project folder (e.g. `./ITEM1234`) via
+  Afterwards it also deletes the leftover top-level project folder (e.g. `./F1234`) via
   `rm -rf`, since `git worktree remove` only removes the worktree's own directory — for
-  Salesforce repos the worktree lives one level down (`ITEM1234/Salesforce`), so the parent
-  `ITEM1234` folder (and its `.ws-sf-package` marker) would otherwise be left behind. This
+  Salesforce repos the worktree lives one level down (`F1234/Salesforce`), so the parent
+  `F1234` folder (and its `.ws-sf-package` marker) would otherwise be left behind. This
   cleanup only runs if Git no longer lists the worktree (removal actually succeeded) and only
   ever targets a path under `WS_GIT_WORKTREE_PATH` (never `WS_GIT_WORKTREE_PATH` itself).
 - `sf-*.sh` (`sf-recruitment.sh`, `sf-businesscentral.sh`, `sf-workforce.sh`, `sf-maia.sh`) —
@@ -97,7 +97,7 @@ branches/tickets side by side without re-cloning or stashing.
   `cd` command for the user to run manually).
 - `WS_UI_MODE=dialog` toggles between `dialog` widgets and plain `echo`/`read` prompts
   throughout — most user-facing scripts implement both code paths.
-- Branch/worktree naming: `<TYPE><NUM>_<Sanitized_Name>` e.g. `ITEM42_Fix_Login_Bug`;
+- Branch/worktree naming: `<TYPE><NUM>_<Sanitized_Name>` e.g. `F42_Fix_Login_Bug`;
   sanitization replaces non-alphanumerics with `_`, collapses repeats, trims, then
   Title_Cases each `_`-separated segment.
 - Nothing here touches Salesforce metadata/CLI directly — it only manages filesystem
@@ -113,8 +113,8 @@ branches/tickets side by side without re-cloning or stashing.
   sub-script invocation, passed via `WS_UI_CD_NEXT_FILE`).
 - `setup.sh` now `chmod 600`s the generated `env.local.sh`.
 - `remove-project-worktree.sh` now also deletes the leftover project folder (e.g.
-  `./ITEM1234`) via `rm -rf` after a successful `git worktree remove`, handling the
-  Salesforce nested-worktree case (`ITEM1234/Salesforce`) where the parent folder and its
+  `./F1234`) via `rm -rf` after a successful `git worktree remove`, handling the
+  Salesforce nested-worktree case (`F1234/Salesforce`) where the parent folder and its
   `.ws-sf-package` marker would otherwise remain. Guarded so it never runs unless Git
   confirms the worktree is gone, and never targets anything outside `WS_GIT_WORKTREE_PATH`.
 - Testing was intentionally left out of this pass (explicit user request).

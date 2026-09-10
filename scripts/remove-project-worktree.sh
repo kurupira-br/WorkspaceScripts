@@ -43,8 +43,8 @@ load_sorted_arrays() {
   done < <(wt_list_raw "$REPO_ROOT" "$WT_BASE" 1 | sort -u)
 }
 
-# First path segment under WT_BASE for a worktree path, e.g. WT_BASE/ITEM1234/Salesforce ->
-# WT_BASE/ITEM1234 (Salesforce repos nest the worktree one level down). Falls back to the
+# First path segment under WT_BASE for a worktree path, e.g. WT_BASE/F1234/Salesforce ->
+# WT_BASE/F1234 (Salesforce repos nest the worktree one level down). Falls back to the
 # path itself when it is not (or is no longer, after removal) inside WT_BASE.
 worktree_project_root() {
   local rp=$1 rel
@@ -59,7 +59,7 @@ worktree_project_root() {
   esac
 }
 
-# After `git worktree remove` succeeds, delete the leftover project folder (e.g. ./ITEM1234),
+# After `git worktree remove` succeeds, delete the leftover project folder (e.g. ./F1234),
 # including any Salesforce-package marker file / parent folder that git worktree remove does
 # not clean up on its own. Refuses to touch anything that is not (still) under WT_BASE, or
 # that Git still lists as a worktree (removal failed / was skipped).
