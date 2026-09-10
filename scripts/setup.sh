@@ -109,7 +109,7 @@ main() {
   done
   repo_path=$(cd "$repo_path" && pwd)
 
-  if ! wt_path=$(read_with_default "Worktree directory (absolute path)" ""); then
+  if ! wt_path=$(read_with_default "Worktree directory (absolute path) - WITHOUT /Salesforce/" ""); then
     dialog --title "setup.sh" --msgbox "Setup cancelled. OK to return to the menu." 8 50 2>/dev/tty
     exit 0
   fi
