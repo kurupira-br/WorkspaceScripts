@@ -8,6 +8,8 @@ branches/tickets side by side without re-cloning or stashing.
 
 - `./ws` → execs `scripts/ws-ui.sh`, a `dialog`(1)-based TUI menu with actions:
   `setup`, `worktree` (create), `select`, `remove`, `exit`.
+- `./setup` → execs `scripts/setup.sh` directly (skips the menu) — run the setup screen
+  without `bash ...` prefix, e.g. right after cloning: `./setup`.
 - `scripts/install.sh` — symlinks `./ws` into `~/.local/bin/ws` (or a custom
   `--bin-dir`/`--name`) so the toolkit can be run as a plain `ws` command from any
   directory, without `cd`ing into the repo. It's a symlink (not a copy), so toolkit

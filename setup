@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run the setup screen directly (repo/worktree paths + auto-install of the `ws` command).
+# Usage: ./setup   (no need to prefix with `bash`; just make sure it's executable)
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+exec bash "$ROOT/scripts/setup.sh" "$@"
